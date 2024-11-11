@@ -62,7 +62,7 @@ controls.enableDamping = true
  */
 const renderer = new THREE.WebGPURenderer({
     canvas: canvas,
-    forceWebGL: true
+    forceWebGL: false
 })
 renderer.setSize(sizes.width, sizes.height)
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
