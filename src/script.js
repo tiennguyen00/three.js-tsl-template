@@ -106,8 +106,6 @@ gui.add(intensityFrequency, 'value').min(0).max(5).name('intensityFrequency')
 /**
  * Animate
  */
-const clock = new THREE.Clock()
-
 const tick = () =>
 {
     // Update controls
@@ -119,5 +117,4 @@ const tick = () =>
     // Call tick again on the next frame
     window.requestAnimationFrame(tick)
 }
-
-tick()
+renderer.setAnimationLoop(tick)
