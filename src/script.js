@@ -113,8 +113,5 @@ const tick = () =>
 
     // Render
     renderer.renderAsync(scene, camera)
-
-    // Call tick again on the next frame
-    window.requestAnimationFrame(tick)
 }
 renderer.setAnimationLoop(tick)
