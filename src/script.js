@@ -1,7 +1,7 @@
 import GUI from 'lil-gui'
-import * as THREE from 'three'
+import * as THREE from 'three/webgpu'
+import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, rangeFog } from 'three/tsl'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, rangeFog } from 'three'
 
 /**
  * Base

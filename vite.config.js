@@ -11,14 +11,14 @@ export default {
         emptyOutDir: true, // Empty the folder first
         sourcemap: true // Add sourcemap
     },
-    resolve:
-    {
-        alias:
-        {
-            'three/examples/jsm': 'three/examples/jsm',
-            'three/addons': 'three/examples/jsm',
-            'three/tsl': 'three/webgpu',
-            'three': 'three/webgpu',
-        }
-    }
+    // resolve:
+    // {
+    //     alias:
+    //     {
+    //         'three/examples/jsm': 'three/examples/jsm',
+    //         'three/addons': 'three/examples/jsm',
+    //         'three/tsl': 'three/webgpu',
+    //         'three': 'three/webgpu',
+    //     }
+    // }
 }
