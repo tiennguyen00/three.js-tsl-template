@@ -1,6 +1,6 @@
 import GUI from 'lil-gui'
 import * as THREE from 'three/webgpu'
-import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, rangeFog } from 'three/tsl'
+import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, fog, rangeFogFactor } from 'three/tsl'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
 
 /**
@@ -16,9 +16,8 @@ const canvas = document.querySelector('canvas.webgl')
 
 // Scene
 const scene = new THREE.Scene()
-const fogColor = uniform(color('#1b191f'))
-const fogNode = rangeFog(fogColor, 20, 50)
-scene.fogNode = fogNode
+const fogColor = uniform(color('#ffffff'))
+scene.fogNode = fog(fogColor, rangeFogFactor(10, 15))
 
 /**
  * Sizes
