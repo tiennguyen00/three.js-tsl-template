@@ -1,7 +1,8 @@
 import GUI from 'lil-gui'
 import * as THREE from 'three/webgpu'
-import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, fog, rangeFogFactor } from 'three/tsl'
+import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, fog, rangeFogFactor, pass, renderOutput } from 'three/tsl'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { sobel } from 'three/addons/tsl/display/SobelOperatorNode.js';
 
 /**
  * Base
@@ -68,6 +69,19 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.setClearColor(fogColor.value)
 
 /**
+ * Post processing
+ */
+const postProcessing = new THREE.PostProcessing(renderer)
+postProcessing.outputColorTransform = false
+
+const scenePass = pass(scene, camera)
+const outputPass = renderOutput(scenePass)
+
+postProcessing.outputNode = sobel(outputPass)
+// postProcessing.outputNode = outputPass
+
+
+/**
  * Dummy
  */
 // Material
@@ -94,8 +108,8 @@ material.colorNode = vec4(
 )
 
 // Mesh
-const mesh = new THREE.Mesh(new THREE.TorusKnotGeometry(1, 0.35, 128, 32), material)
-scene.add(mesh)
+const torusKnot = new THREE.Mesh(new THREE.TorusKnotGeometry(1, 0.35, 128, 32), material)
+scene.add(torusKnot)
 
 // Tweaks
 gui.add(timeFrequency, 'value').min(0).max(5).name('timeFrequency')
@@ -111,6 +125,7 @@ const tick = () =>
     controls.update()
 
     // Render
-    renderer.renderAsync(scene, camera)
+    // renderer.renderAsync(scene, camera)
+    postProcessing.renderAsync(scene, camera)
 }
 renderer.setAnimationLoop(tick)
