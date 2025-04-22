@@ -1,131 +1,145 @@
-import GUI from 'lil-gui'
-import * as THREE from 'three/webgpu'
-import { sin, positionLocal, time, vec2, vec3, vec4, uv, uniform, color, fog, rangeFogFactor, pass, renderOutput } from 'three/tsl'
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
-import { sobel } from 'three/addons/tsl/display/SobelOperatorNode.js';
+import GUI from "lil-gui";
+import * as THREE from "three/webgpu";
+import {
+  color,
+  computeSkinning,
+  objectWorldMatrix,
+  instancedArray,
+  instanceIndex,
+  Fn,
+  shapeCircle,
+  uniform,
+  positionLocal,
+  normalGeometry,
+  positionGeometry,
+} from "three/tsl";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 
-/**
- * Base
- */
-// Debug
+import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+
 const gui = new GUI({
-    width: 400
-})
+  width: 400,
+});
 
-// Canvas
-const canvas = document.querySelector('canvas.webgl')
-
-// Scene
-const scene = new THREE.Scene()
-const fogColor = uniform(color('#ffffff'))
-scene.fogNode = fog(fogColor, rangeFogFactor(10, 15))
-
-/**
- * Sizes
- */
+let camera, scene, renderer;
+let mixer, clock, controls;
 const sizes = {
-    width: window.innerWidth,
-    height: window.innerHeight
+  width: window.innerWidth,
+  height: window.innerHeight,
+};
+
+init();
+
+function init() {
+  console.log("positionGeometry: ", positionGeometry);
+  camera = new THREE.PerspectiveCamera(70, sizes.width / sizes.height, 1, 1000);
+  camera.position.set(0, 300, -85);
+
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111111);
+
+  // Add axes helper
+  const axesHelper = new THREE.AxesHelper(100);
+  scene.add(axesHelper);
+
+  camera.lookAt(0, 0, -85);
+
+  scene.add(new THREE.AmbientLight(0xffffff, 10));
+
+  clock = new THREE.Clock();
+
+  const loader = new GLTFLoader();
+  loader.load("./michelle.glb", function (gltf) {
+    const object = gltf.scene;
+    mixer = new THREE.AnimationMixer(object);
+    const uSize = uniform(2);
+
+    const action = mixer.clipAction(gltf.animations[0]);
+    action.play();
+
+    object.traverse(function (child) {
+      if (child.isMesh) {
+        child.visible = false;
+
+        const countOfPoints = child.geometry.getAttribute("position").count;
+
+        const pointPositionArray = instancedArray(countOfPoints, "vec3").setPBO(
+          true
+        );
+        const pointSpeedArray = instancedArray(countOfPoints, "vec3").setPBO(
+          true
+        );
+
+        const pointSpeedAttribute = pointSpeedArray.toAttribute();
+        const skinningPosition = computeSkinning(child);
+
+        const materialPoints = new THREE.PointsNodeMaterial();
+        materialPoints.colorNode = pointSpeedAttribute
+          .mul(0.6)
+          .mix(color(0x0066ff), color(0xff9000));
+        materialPoints.opacityNode = shapeCircle();
+        materialPoints.sizeNode = pointSpeedAttribute
+          .length()
+          .exp()
+          .min(5)
+          .mul(uSize);
+        materialPoints.sizeAttenuation = false;
+
+        materialPoints.positionNode = Fn(() => {
+          const pointPosition = pointPositionArray.element(instanceIndex);
+          const pointSpeed = pointSpeedArray.element(instanceIndex);
+
+          const skinningWorldPosition =
+            objectWorldMatrix(child).mul(skinningPosition);
+
+          const skinningSpeed = skinningWorldPosition.sub(pointPosition);
+
+          pointSpeed.assign(skinningSpeed);
+          pointPosition.assign(skinningWorldPosition);
+
+          return pointPositionArray.toAttribute();
+        })().compute(countOfPoints);
+
+        const pointCloud = new THREE.Sprite(materialPoints);
+        pointCloud.count = countOfPoints;
+        scene.add(pointCloud);
+      }
+    });
+
+    object.scale.set(100, 100, 100);
+    object.rotation.x = -Math.PI / 2;
+    object.rotation.y = Math.PI;
+
+    scene.add(object);
+    gui.add(uSize, "value").min(0).max(5).name("uSize");
+  });
+
+  //renderer
+
+  renderer = new THREE.WebGPURenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setAnimationLoop(animate);
+  document.body.appendChild(renderer.domElement);
+
+  controls = new OrbitControls(camera, renderer.domElement);
+
+  window.addEventListener("resize", onWindowResize);
 }
 
-window.addEventListener('resize', () =>
-{
-    // Update sizes
-    sizes.width = window.innerWidth
-    sizes.height = window.innerHeight
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
 
-    // Update camera
-    camera.aspect = sizes.width / sizes.height
-    camera.updateProjectionMatrix()
-
-    // Update renderer
-    renderer.setSize(sizes.width, sizes.height)
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-})
-
-/**
- * Camera
- */
-// Base camera
-const camera = new THREE.PerspectiveCamera(25, sizes.width / sizes.height, 0.1, 100)
-camera.position.x = 6
-camera.position.y = 3
-camera.position.z = 10
-scene.add(camera)
-
-// Controls
-const controls = new OrbitControls(camera, canvas)
-controls.enableDamping = true
-
-/**
- * Renderer
- */
-const renderer = new THREE.WebGPURenderer({
-    canvas: canvas,
-    forceWebGL: false
-})
-renderer.setSize(sizes.width, sizes.height)
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.setClearColor(fogColor.value)
-
-/**
- * Post processing
- */
-const postProcessing = new THREE.PostProcessing(renderer)
-postProcessing.outputColorTransform = false
-
-const scenePass = pass(scene, camera)
-const outputPass = renderOutput(scenePass)
-
-postProcessing.outputNode = sobel(outputPass)
-// postProcessing.outputNode = outputPass
-
-
-/**
- * Dummy
- */
-// Material
-const material = new THREE.MeshBasicNodeMaterial()
-
-// Uniforms
-const timeFrequency = uniform(0.5)
-const positionFrequency = uniform(2)
-const intensityFrequency = uniform(0.5)
-
-// Position
-const oscillation = sin(time.mul(timeFrequency).add(positionLocal.y.mul(positionFrequency))).mul(intensityFrequency)
-material.positionNode = vec3(
-    positionLocal.x.add(oscillation),
-    positionLocal.y,
-    positionLocal.z
-)
-
-// Color
-material.colorNode = vec4(
-    uv().mul(vec2(32, 8)).fract(),
-    1,
-    1
-)
-
-// Mesh
-const torusKnot = new THREE.Mesh(new THREE.TorusKnotGeometry(1, 0.35, 128, 32), material)
-scene.add(torusKnot)
-
-// Tweaks
-gui.add(timeFrequency, 'value').min(0).max(5).name('timeFrequency')
-gui.add(positionFrequency, 'value').min(0).max(5).name('positionFrequency')
-gui.add(intensityFrequency, 'value').min(0).max(5).name('intensityFrequency')
-
-/**
- * Animate
- */
-const tick = () =>
-{
-    // Update controls
-    controls.update()
-
-    // Render
-    // renderer.renderAsync(scene, camera)
-    postProcessing.renderAsync(scene, camera)
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
-renderer.setAnimationLoop(tick)
+
+function animate() {
+  const delta = clock.getDelta();
+
+  if (mixer) mixer.update(delta);
+
+  controls.update();
+
+  renderer.render(scene, camera);
+}
