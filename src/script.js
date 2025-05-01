@@ -44,7 +44,7 @@ const gui = new GUI({
 let camera, scene, renderer;
 let mixer, clock, controls, timer, updateParticles, spawnParticles;
 let getInstanceColor; // TSL function
-const screenPointer = new THREE.Vector2();
+const screenPointer = new THREE.Vector2(0, 0);
 const scenePointer = new THREE.Vector3();
 const raycastPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0);
 const raycaster = new THREE.Raycaster();
@@ -166,15 +166,14 @@ function init() {
   renderer = new THREE.WebGPURenderer({ antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.setAnimationLoop(animate);
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
   document.body.appendChild(renderer.domElement);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
 
   vfxParticles();
-
-  renderer.setAnimationLoop(animate);
-
   window.addEventListener("resize", onWindowResize);
 }
 
@@ -459,6 +458,12 @@ function updatePointer() {
   raycaster.setFromCamera(screenPointer, camera);
   raycaster.ray.intersectPlane(raycastPlane, scenePointer);
 }
+
+// pointer handling
+window.addEventListener("pointermove", (event) => {
+  screenPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+  screenPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+});
 
 function animate() {
   if (timer) timer.update();
