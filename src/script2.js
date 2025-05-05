@@ -115,7 +115,7 @@ loader.load("/petals.glb", function (gltf) {
 // Declare this before the loader.load call
 
 let katanaControls = {
-  x: -0.14353972590668,
+  x: 0.14353972590668,
   y: -1.07442468752771,
   z: -1.30061935858617,
 };
