@@ -38,7 +38,7 @@ const PETAL_SETTINGS = {
 
 const PARAMS = {
   threshold: 0,
-  strength: 0.5,
+  strength: 0.45,
   radius: 0,
   exposure: 1,
 };
