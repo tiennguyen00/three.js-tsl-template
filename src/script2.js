@@ -71,10 +71,10 @@ window.addEventListener("pointermove", (event) => {
   screenPointer.x = (event.clientX / window.innerWidth) * 2 - 1;
   screenPointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
   pointerInitialized = true;
-  instancedMesh.visible = true;
+  if (instancedMesh) instancedMesh.visible = true;
 });
 
-loader.load("./petals.glb", function (gltf) {
+loader.load("/petals.glb", function (gltf) {
   // Find the first mesh in the loaded scene
   let mesh = null;
   gltf.scene.traverse((child) => {
@@ -120,7 +120,7 @@ let katanaControls = {
   z: -1.30061935858617,
 };
 
-loader.load("./cherry_katana.glb", function (gltf) {
+loader.load("/cherry_katana.glb", function (gltf) {
   const katanaModel = gltf.scene;
   katanaModel.scale.set(0.4, 0.4, 0.4);
   // katanaModel.rotateX(Math.PI / 2);
