@@ -4,6 +4,7 @@ import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import VirtualScroll from "virtual-scroll";
+import { gaussianBlur } from "three/examples/jsm/tsl/display/GaussianBlurNode.js";
 import {
   Fn,
   positionLocal,
@@ -11,6 +12,10 @@ import {
   length,
   pow,
   float,
+  abs,
+  pass,
+  mix,
+  screenUV,
 } from "three/tsl";
 
 /**
@@ -26,6 +31,7 @@ const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new THREE.Scene();
+scene.add(new THREE.AxesHelper(10));
 
 // Loader
 const loader = new GLTFLoader();
@@ -119,6 +125,7 @@ mat.positionNode = Fn(() => {
 
   let distanceFromCenter = length(positionWorld.x);
 
+  // paraboi for distanceFromCenter
   position.y.mulAssign(float(1).add(pow(distanceFromCenter.mul(0.1), 2)));
 
   return position;
@@ -139,6 +146,15 @@ for (let i = 0; i < 6; i++) {
 }
 
 /**
+ * Post Processing
+ */
+
+const postProcessing = new THREE.PostProcessing(renderer);
+const normalPass = pass(scene, camera);
+const blurPass = gaussianBlur(normalPass, 3, 10);
+postProcessing.outputNode = mix(normalPass, blurPass, screenUV);
+
+/**
  * Animate
  */
 let radius = 12;
@@ -157,7 +173,8 @@ const tick = () => {
   });
 
   // Render
-  renderer.renderAsync(scene, camera);
+  // renderer.renderAsync(scene, camera);
+  postProcessing.renderAsync();
 };
 
 renderer.setAnimationLoop(tick);
