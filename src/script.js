@@ -16,6 +16,14 @@ import {
   pass,
   mix,
   screenUV,
+  smoothstep,
+  vec4,
+  time,
+  sin,
+  vec2,
+  cos,
+  sign,
+  mx_noise_float,
 } from "three/tsl";
 
 /**
@@ -31,7 +39,7 @@ const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new THREE.Scene();
-scene.add(new THREE.AxesHelper(10));
+// scene.add(new THREE.AxesHelper(10));
 
 // Loader
 const loader = new GLTFLoader();
@@ -72,8 +80,9 @@ camera.position.set(0, 0, 8);
 scene.add(camera);
 
 // Controls
-// const controls = new OrbitControls(camera, canvas);
-// controls.enableDamping = true;
+const controls = new OrbitControls(camera, canvas);
+controls.enableZoom = false;
+controls.enableDamping = true;
 
 // Scroll
 const scroller = new VirtualScroll();
@@ -135,6 +144,7 @@ const geometry = new THREE.PlaneGeometry(8, 4.5, 10, 10);
 for (let i = 0; i < 6; i++) {
   const matClone = mat.clone();
   matClone.map = tts[i % tts.length];
+  // matClone.side = THREE.DoubleSide;
   const slide = new THREE.Mesh(geometry, matClone);
   slide.position.set(i * 8, 0, 0);
   scene.add(slide);
@@ -150,9 +160,36 @@ for (let i = 0; i < 6; i++) {
  */
 
 const postProcessing = new THREE.PostProcessing(renderer);
-const normalPass = pass(scene, camera);
-const blurPass = gaussianBlur(normalPass, 3, 10);
-postProcessing.outputNode = mix(normalPass, blurPass, screenUV);
+const screenPass = pass(scene, camera);
+const screenPassColor = screenPass.getTextureNode();
+// postProcessing.outputNode = mix(blurPass, normalPass, edge);
+// postProcessing.outputNode = vec4(mx_noise_float(screenUV.mul(10)), 0, 0, 1);
+
+const processUV = Fn(([uv]) => {
+  let newuv = uv.sub(vec2(0.5, 0.5), 0.5).toVar();
+
+  newuv.x.mulAssign(sign(newuv.x));
+  const xx = abs(uv.x.sub(0.5).div(0.5));
+  newuv.x.mulAssign(
+    float(1).sub(pow(abs(newuv.x), float(0.5)).mul(float(0.6)))
+  );
+
+  newuv.y.mulAssign(float(1).sub(float(0.6).mul(pow(xx, float(1.5)))));
+
+  newuv.addAssign(vec2(0.5, 0.5));
+  newuv.x.addAssign(time.mul(0.05).mul(sign(uv.x.sub(0.5))));
+  newuv.mulAssign(100);
+
+  return newuv;
+});
+
+const noiseUV = processUV(screenUV);
+const noise = mx_noise_float(noiseUV);
+const angle = noise.mul(2 * Math.PI);
+const direction = vec2(cos(angle), sin(angle));
+const newnewUV = screenUV.add(direction.mul(noise.mul(0.1)));
+
+postProcessing.outputNode = screenPassColor.sample(newnewUV);
 
 /**
  * Animate
@@ -161,13 +198,13 @@ let radius = 12;
 let dist = 8;
 const tick = () => {
   // Update controls
-  //   controls.update();
+  controls.update();
   slides.forEach((object) => {
     object.mesh.position.x = object.originalPosition + scrollPosition;
     const angle = object.mesh.position.x * 0.08;
-    let x = Math.cos(angle) * radius;
-    let z = Math.sin(angle) * radius;
 
+    // let x = Math.cos(angle) * radius;
+    // let z = Math.sin(angle) * radius;
     // object.mesh.position.set(x, 0, z);
     // object.mesh.rotation.set(0, -angle - Math.PI * 0.5, 0);
   });
