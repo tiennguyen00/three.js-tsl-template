@@ -190,6 +190,7 @@ const direction = vec2(cos(angle), sin(angle));
 const newnewUV = screenUV.add(direction.mul(noise.mul(0.1)));
 
 postProcessing.outputNode = screenPassColor.sample(newnewUV);
+postProcessing.outputNode = screenPass;
 
 /**
  * Animate
