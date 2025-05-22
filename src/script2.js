@@ -1,10 +1,8 @@
 import GUI from "lil-gui";
-import * as THREE from "three/webgpu";
 
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { bloom } from "three/examples/jsm/tsl/display/BloomNode.js";
-
 import {
   Discard,
   Fn,
@@ -46,10 +44,8 @@ import {
   WebGPURenderer,
 } from "three/webgpu";
 import { createPointer } from "./utils/Pointer";
+import { curlNoise4d } from "./utils/curlNoise4d";
 
-/**
- * Base
- */
 // Debug
 const gui = new GUI({
   width: 400,
@@ -57,9 +53,6 @@ const gui = new GUI({
 
 // Loaders
 const gltfLoader = new GLTFLoader();
-
-// Canvas
-const canvas = document.querySelector("canvas.webgl");
 
 // Scene
 const scene = new Scene();
@@ -90,12 +83,7 @@ window.addEventListener("resize", () => {
  * Camera
  */
 // Base camera
-const camera = new THREE.PerspectiveCamera(
-  45,
-  sizes.width / sizes.height,
-  0.1,
-  500
-);
+const camera = new PerspectiveCamera(45, sizes.width / sizes.height, 0.1, 500);
 camera.position.set(0, 0, 50);
 scene.add(camera);
 scene.backgroundNode = Fn(() => {
@@ -144,6 +132,28 @@ const uniforms = {
   wanderingSpeed: uniform(params.wanderingSpeed),
   contactScale: uniform(params.contactParticleScaleMultiplier),
 };
+
+// Canvas
+const canvas = document.querySelector("canvas.webgl");
+
+/**
+ * Renderer
+ */
+const renderer = new WebGPURenderer({
+  canvas: canvas,
+  forceWebGL: false,
+  powerPreference: "high-performance",
+});
+renderer.setSize(canvas.offsetWidth, canvas.offsetHeight);
+renderer.toneMapping = ACESFilmicToneMapping;
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setClearColor(0x000000);
+
+const pointerHandler = createPointer(
+  renderer,
+  camera,
+  new Plane(new Vector3(0, 0, 1), 0)
+);
 
 gltfLoader.load("/face2.glb", (gltf) => {
   console.log("totoro: ", gltf);
@@ -325,24 +335,6 @@ const controls = new OrbitControls(camera, canvas);
 controls.enableDamping = true;
 controls.dampingFactor = 0.1;
 
-/**
- * Renderer
- */
-const renderer = new THREE.WebGPURenderer({
-  canvas: canvas,
-  forceWebGL: false,
-});
-renderer.setSize(sizes.width, sizes.height);
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-renderer.setClearColor(0x000000);
-
-// pointer handling
-const pointerHandler = createPointer(
-  renderer,
-  camera,
-  new Plane(new Vector3(0, 0, 1), 0)
-);
-
 // Processing
 const postProcessing = new PostProcessing(renderer);
 const scenePass = pass(scene, camera);
@@ -355,9 +347,13 @@ postProcessing.outputNode = scenePassColor.add(bloomPass);
 /**
  * Animate
  */
-const tick = () => {
+const tick = async () => {
   // Update controls
   controls.update();
+  pointerHandler.update();
+  if (updateParticlesCompute instanceof ComputeNode) {
+    await renderer.computeAsync(updateParticlesCompute);
+  }
 
   // Render
   // renderer.renderAsync(scene, camera);
